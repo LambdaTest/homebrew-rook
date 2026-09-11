@@ -1,4 +1,11 @@
 name: Update Homebrew Formula
+# The run title carries the version so the private release pipeline's
+# dispatch-homebrew job can tell THIS release's run from any other
+# repository_dispatch run in the same window (it matches the title and an
+# id above the newest run that existed before it dispatched). For a
+# repository_dispatch the version comes from the payload; for a manual
+# run from the input. Display only: "Determine version" still validates it.
+run-name: "Update rook to ${{ github.event.inputs.version || github.event.client_payload.version }}"
 
 on:
   repository_dispatch:
