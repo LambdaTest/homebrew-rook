@@ -31,12 +31,19 @@ from source, which the formula supports.
 ### If you tapped before the formula moved here
 
 Until September 2026 the formula lived in `LambdaTest/rook` itself and was
-tapped by explicit URL. A tap created that way keeps pulling from the old
-remote, so point it at this repository once:
+tapped by explicit URL. That clone keeps pulling from the old remote, and its
+history is unrelated to this repository's, so re-point it and put it on the
+new history in one go. The installed `rook` is untouched:
 
 ```
 brew tap --custom-remote lambdatest/rook https://github.com/LambdaTest/homebrew-rook
+git -C "$(brew --repository lambdatest/rook)" reset --hard origin/main
 ```
+
+Two paths that look shorter do not work on Homebrew 6. `brew update` alone
+after the first command tries to rebase the old history onto the new one and
+leaves the tap detached mid-rebase. `brew untap --force` uninstalls `rook`
+before removing the tap.
 
 ## How a release reaches this tap
 
