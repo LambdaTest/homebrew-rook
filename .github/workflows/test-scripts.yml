@@ -21,6 +21,9 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
       # ubuntu-latest ships GNU sed, so test-formula-patch.sh's gsed
       # fallback (for BSD sed on macOS) is simply unused here.
       - name: Run the script harnesses
@@ -28,10 +31,10 @@ jobs:
           shopt -s nullglob
           harnesses=(scripts/test-*.sh)
           # A glob that quietly matches nothing is a green run that checked
-          # nothing. There are 5 harnesses; fewer means one was renamed or
+          # nothing. There are 6 harnesses; fewer means one was renamed or
           # deleted, and that should be a red run, not a silent gap.
-          if [ "${#harnesses[@]}" -lt 5 ]; then
-            echo "::error::expected at least 5 harnesses matching scripts/test-*.sh, found ${#harnesses[@]}"
+          if [ "${#harnesses[@]}" -lt 6 ]; then
+            echo "::error::expected at least 6 harnesses matching scripts/test-*.sh, found ${#harnesses[@]}"
             exit 1
           fi
           for t in "${harnesses[@]}"; do
