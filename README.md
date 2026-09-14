@@ -8,9 +8,10 @@ workflows that keep it current, and the bottles they build.
 ## Install
 
 ```
-brew tap lambdatest/rook
 brew install lambdatest/rook/rook
 ```
+
+Homebrew automatically adds the tap for a fresh installation.
 
 Install by the full `lambdatest/rook/rook` name, not just `rook`. Homebrew
 refuses to load a formula from a third-party tap by its short name until the
