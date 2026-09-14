@@ -8,9 +8,10 @@ workflows that keep it current, and the bottles they build.
 ## Install
 
 ```
-brew tap lambdatest/rook
 brew install lambdatest/rook/rook
 ```
+
+Homebrew automatically adds the tap for a fresh installation.
 
 Install by the full `lambdatest/rook/rook` name, not just `rook`. Homebrew
 refuses to load a formula from a third-party tap by its short name until the
@@ -24,6 +25,11 @@ command when it detects a Homebrew install.
 The formula ships a bundled Node runtime, so nothing on the machine needs Node.
 Homebrew's `node` is a build-time dependency only; `def install` writes a
 `#!/bin/sh` launcher that execs the bundled binary directly.
+
+Both npm install calls explicitly disable package lifecycle scripts. The
+published CLI already contains its build output; no install-time package
+script is required. This policy also applies to older Homebrew versions
+whose default npm arguments do not disable scripts.
 
 Bottles are built for arm64 macOS and x86_64 Linux. Intel macOS installs build
 from source, which the formula supports.
