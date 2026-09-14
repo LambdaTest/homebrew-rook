@@ -21,11 +21,26 @@ permissions:
   contents: write
   actions: write
 
+# One group across versions and trigger refs. Queued releases read the
+# formula left by the previous run, rather than an old event SHA.
+concurrency:
+  group: rook-formula-update
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install workflow dependencies
+        run: npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 
       # Every ${{ }} in this job is routed through an env: var rather than
       # spliced directly into a run: body. Actions expands ${{ }} before bash
@@ -145,6 +160,9 @@ jobs:
           SHA256: ${{ steps.tarball.outputs.sha256 }}
         run: |
           FORMULA="Formula/rook.rb"
+          # Check before the first mutation. Same-version retries are
+          # allowed; stale releases cannot move the tap backwards.
+          node scripts/check-formula-version.mjs "$FORMULA" "$VERSION"
 
           sed -i "s|^  url \".*\"|  url \"${TARBALL_URL}\"|" "$FORMULA"
           sed -i "s|^  sha256 \".*\"|  sha256 \"${SHA256}\"|" "$FORMULA"

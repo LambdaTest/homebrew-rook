@@ -69,6 +69,13 @@ before removing the tap.
 Between steps 2 and 3 the formula has no bottle block, so an install in that
 window builds from source instead of failing.
 
+Formula updates run one at a time and read the current `main` branch when
+they start. Before changing the formula, the updater compares semantic
+versions and refuses an older release, including a prerelease of the current
+stable version. Same-version retries are allowed. This workflow does not
+perform rollbacks. A competing push causes the normal Git push to fail;
+the updater never force-pushes over another change.
+
 Every workflow can also be dispatched by hand, for a re-run or a version the
 private pipeline never dispatched:
 
@@ -89,6 +96,7 @@ committed workflow files and run them against the fixtures under
 pull request. Locally:
 
 ```
+npm ci --ignore-scripts
 for t in scripts/test-*.sh; do bash "$t"; done
 ```
 

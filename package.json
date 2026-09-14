@@ -1,0 +1,14 @@
+{
+  "name": "homebrew-rook-workflows",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "semver": "7.7.2"
+  },
+  "devDependencies": {
+    "yaml": "2.9.1"
+  }
+}
