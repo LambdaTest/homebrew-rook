@@ -53,7 +53,9 @@ class Rook < Formula
     # "npm install without std_npm_args" to the cop and flags a false positive
     # that cannot be suppressed in a formula (Homebrew forbids
     # `# rubocop:disable` under **/Formula/**/*.rb).
-    system "npm", "install", *std_npm_args.reject { |arg| arg == "--build-from-source" }
+    # Keep this explicit for Homebrew versions whose std_npm_args allows
+    # package lifecycle scripts. The published CLI is already built.
+    system "npm", "install", "--ignore-scripts", *std_npm_args.reject { |arg| arg == "--build-from-source" }
 
     node_pkg =
       if OS.mac?

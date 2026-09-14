@@ -28,10 +28,10 @@ jobs:
           shopt -s nullglob
           harnesses=(scripts/test-*.sh)
           # A glob that quietly matches nothing is a green run that checked
-          # nothing. There are 4 harnesses; fewer means one was renamed or
+          # nothing. There are 5 harnesses; fewer means one was renamed or
           # deleted, and that should be a red run, not a silent gap.
-          if [ "${#harnesses[@]}" -lt 4 ]; then
-            echo "::error::expected at least 4 harnesses matching scripts/test-*.sh, found ${#harnesses[@]}"
+          if [ "${#harnesses[@]}" -lt 5 ]; then
+            echo "::error::expected at least 5 harnesses matching scripts/test-*.sh, found ${#harnesses[@]}"
             exit 1
           fi
           for t in "${harnesses[@]}"; do

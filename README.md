@@ -25,6 +25,11 @@ The formula ships a bundled Node runtime, so nothing on the machine needs Node.
 Homebrew's `node` is a build-time dependency only; `def install` writes a
 `#!/bin/sh` launcher that execs the bundled binary directly.
 
+Both npm install calls explicitly disable package lifecycle scripts. The
+published CLI already contains its build output; no install-time package
+script is required. This policy also applies to older Homebrew versions
+whose default npm arguments do not disable scripts.
+
 Bottles are built for arm64 macOS and x86_64 Linux. Intel macOS installs build
 from source, which the formula supports.
 

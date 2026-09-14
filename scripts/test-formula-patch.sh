@@ -164,6 +164,15 @@ else
   fail "(c) no-bottle fixture changed more than expected ($DIFF_LINES diff lines, expected 6) — the strip regex may be eating something with no bottle block present"
 fi
 
+# Exercise the release transform on the shipping formula too: a regenerated
+# formula must retain its install policy, including on older Homebrew.
+CURRENT="$WORKDIR/current.rb"
+cp "$REPO_ROOT/Formula/rook.rb" "$CURRENT"
+run_transform "$CURRENT" "$VERSION" "$TARBALL_URL" "$SHA256"
+check "(d) regenerated formula suppresses lifecycle scripts" \
+      "(d) regeneration lost the lifecycle-script policy" \
+      env ROOK_FORMULA_UNDER_TEST="$CURRENT" node "$REPO_ROOT/scripts/test-npm-lifecycle.mjs"
+
 echo
 if [ "$FAIL" -ne 0 ]; then
   echo "=== formula-patch transform test: FAILED ==="
