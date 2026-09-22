@@ -13,7 +13,7 @@ name: brew-smoke (Intel)
 # ran and failed, not one still queued waiting for allocation.
 #
 # rook does not publish a bottle for darwin-x64 at all (build-bottles.yml's
-# matrix only builds macos-14/arm64 and ubuntu-latest) — every Intel Mac
+# matrix only builds macos-15/arm64 and ubuntu-latest) — every Intel Mac
 # install is a source build, exercising Formula/rook.rb's `def install`
 # platform-detection branch (Hardware::CPU.intel? on macOS) that neither of
 # brew-smoke.yml's two jobs ever reaches.

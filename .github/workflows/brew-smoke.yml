@@ -58,7 +58,7 @@ jobs:
 
   macos-arm:
     needs: guard
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 10
     steps:
       # No setup-homebrew here: GitHub's macOS runner images ship Homebrew
@@ -99,12 +99,12 @@ jobs:
           brew install lambdatest/rook/rook 2>&1 | tee install.log
 
       # Bottled on this platform (build-bottles.yml's matrix includes
-      # macos-14) — a source build here means the bottle either failed to
+      # macos-15) — a source build here means the bottle either failed to
       # publish or Homebrew's platform-tag matching regressed.
       - name: Assert a bottle was poured, not built from source
         run: |
           if ! grep -q "Pouring rook-" install.log; then
-            echo "::error::expected a bottle pour on macos-14 (arm64) but got a source build. Bottle publish or platform-tag matching may have regressed."
+            echo "::error::expected a bottle pour on macos-15 (arm64) but got a source build. Bottle publish or platform-tag matching may have regressed."
             exit 1
           fi
 
