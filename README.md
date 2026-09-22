@@ -31,8 +31,10 @@ published CLI already contains its build output; no install-time package
 script is required. This policy also applies to older Homebrew versions
 whose default npm arguments do not disable scripts.
 
-Bottles are built for arm64 macOS and x86_64 Linux. Intel macOS installs build
-from source, which the formula supports.
+Bottles are built on arm64 macOS 15 (Sequoia) and x86_64 Linux. The macOS
+installation smoke test uses the same runner as the bottle build. Older macOS
+versions and Intel Macs build from source and need Homebrew’s Node build
+dependency; Homebrew may compile that dependency on unsupported macOS versions.
 
 ### If you tapped before the formula moved here
 
