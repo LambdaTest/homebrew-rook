@@ -122,11 +122,14 @@ jobs:
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"
         run: |
-          # The macOS runner image links a stale openssl@1.1 at bin/openssl,
-          # so linking the openssl@3 upgrade node pulls in fails and brew
-          # exits 1 even though node itself installed. Unlink it first.
-          if brew list --formula openssl@1.1 >/dev/null 2>&1; then
-            brew unlink openssl@1.1
+          # The macOS runner image ships bin/openssl as a symlink into
+          # opt/openssl@1.1, so linking the openssl@3 upgrade node pulls in
+          # fails and brew exits 1 even though node itself installed.
+          # `brew unlink openssl@1.1` does not remove it (0 symlinks: it
+          # points through opt/, not the keg), so drop that one link.
+          OPENSSL_LINK="$(brew --prefix)/bin/openssl"
+          if [ -L "$OPENSSL_LINK" ] && readlink "$OPENSSL_LINK" | grep -q 'openssl@1\.1'; then
+            rm "$OPENSSL_LINK"
           fi
           brew install node
 
