@@ -70,6 +70,15 @@ jobs:
             echo "::error::version '$VERSION' is not a valid semver-ish string"
             exit 1
           fi
+          # Stable releases only. The formula holds one version and Homebrew
+          # has no channels, so a pre-release here would move every
+          # `brew upgrade` onto it; betas ship through npm's `beta` tag and
+          # the GitHub pre-release instead. rook's release workflow already
+          # skips this dispatch for them; this refuses a manual or stray one.
+          if [[ "$VERSION" == *-* ]]; then
+            echo "::error::version '$VERSION' is a pre-release; the rook formula tracks stable releases only"
+            exit 1
+          fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       # @testmuai/rook itself is published at $VERSION (the CLI's own

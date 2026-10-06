@@ -60,6 +60,7 @@ check() {
   if "$@"; then pass "$ok_msg"; else fail "$fail_msg"; fi
 }
 contains() { printf '%s' "$2" | grep -qF -- "$1"; }
+not_contains() { ! contains "$1" "$2"; }
 
 for f in update-formula.yml build-bottles.yml brew-smoke.yml brew-smoke-intel.yml; do
   if [ ! -f "$WF/$f" ]; then
@@ -249,10 +250,21 @@ check "(4/uf) a valid workflow_dispatch version is accepted" \
       "(4/uf) a valid workflow_dispatch version was rejected — $OUT" \
       contains "version=0.1.0" "$(cat "$WORKDIR/github_output")"
 : >"$WORKDIR/github_output"
+OUT="$(run_step "$WORKDIR" "$UF_BODY" INPUT_VERSION="" DISPATCH_VERSION="1.2.3")"
+check "(4/uf) a valid stable version from repository_dispatch is accepted" \
+      "(4/uf) a valid stable version from repository_dispatch was rejected — $OUT" \
+      contains "version=1.2.3" "$(cat "$WORKDIR/github_output")"
+# The formula has one version and no channels: a pre-release here would move
+# every `brew upgrade` onto it, so a well-formed pre-release is refused
+# before anything is written.
+: >"$WORKDIR/github_output"
 OUT="$(run_step "$WORKDIR" "$UF_BODY" INPUT_VERSION="" DISPATCH_VERSION="1.2.3-beta.1")"
-check "(4/uf) a valid prerelease from repository_dispatch is accepted" \
-      "(4/uf) a valid prerelease from repository_dispatch was rejected — $OUT" \
-      contains "version=1.2.3-beta.1" "$(cat "$WORKDIR/github_output")"
+check "(4/uf) a pre-release from repository_dispatch is refused" \
+      "(4/uf) a pre-release from repository_dispatch was not refused — $OUT" \
+      contains "stable releases only" "$OUT"
+check "(4/uf) a refused pre-release writes no version output" \
+      "(4/uf) a refused pre-release still wrote a version output" \
+      not_contains "version=" "$(cat "$WORKDIR/github_output")"
 
 # =============================================================================
 # 2/3. build-bottles.yml — guard / "Resolve version"
