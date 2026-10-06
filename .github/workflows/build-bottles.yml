@@ -121,7 +121,14 @@ jobs:
       - name: Pre-install node dependency
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"
-        run: brew install node
+        run: |
+          # The macOS runner image links a stale openssl@1.1 at bin/openssl,
+          # so linking the openssl@3 upgrade node pulls in fails and brew
+          # exits 1 even though node itself installed. Unlink it first.
+          if brew list --formula openssl@1.1 >/dev/null 2>&1; then
+            brew unlink openssl@1.1
+          fi
+          brew install node
 
       - name: Build bottle
         env:
