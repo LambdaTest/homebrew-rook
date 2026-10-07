@@ -25,7 +25,7 @@ brew install lambdatest/rook/rook
 Homebrew adds the tap automatically on a fresh installation.
 
 > [!IMPORTANT]
-> Install by the full `lambdatest/rook/rook` name, not just `rook`. Homebrew refuses to load a formula from a third-party tap by its short name until the tap is trusted, and naming the tap in full is what satisfies that automatically. `brew install rook` after the same tap fails with `Error: Refusing to load formula lambdatest/rook/rook from untrusted tap lambdatest/rook.`
+> Install by the full `lambdatest/rook/rook` name, not just `rook`. Homebrew refuses to load a formula from a third-party tap by its short name until the tap is trusted, and naming the tap in full is what satisfies that automatically. Even after tapping, `brew install rook` fails with `Error: Refusing to load formula lambdatest/rook/rook from untrusted tap lambdatest/rook.`
 
 ## Upgrade and uninstall
 
@@ -38,7 +38,7 @@ brew untap lambdatest/rook              # after uninstalling, to remove the tap 
 ## What you get
 
 - **A self-contained `rook`.** The formula bundles its own Node runtime, so nothing on your machine needs Node.
-- **Bottles** for arm64 macOS 15 (Sequoia) and x86_64 Linux. Older macOS versions and Intel Macs build from source, which needs Homebrew's `node` at build time only.
+- **Bottles** for arm64 macOS 15 (Sequoia) and x86_64 Linux. Everything else (older macOS, Intel Macs and arm64 Linux) builds from source, which needs Homebrew's `node` at build time only.
 - **Stable releases only.** Pre-release versions of rook are published to npm, not to this tap.
 
 ### If you tapped before the formula moved here
