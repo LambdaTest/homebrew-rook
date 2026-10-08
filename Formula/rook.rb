@@ -25,6 +25,12 @@ class Rook < Formula
   license "Apache-2.0"
   version "0.1.7"
 
+  bottle do
+    root_url "https://github.com/LambdaTest/homebrew-rook/releases/download/rook-0.1.7"
+    sha256 cellar: :any_skip_relocation, arm64_sequoia: "bfdf7bb128d6fc8d50fb36393c24238aee83cb33e615a7134f3115b57d8ab03e"
+    sha256 cellar: :any_skip_relocation, x86_64_linux:  "14d5748dd5a7954339507d1d823d942ca51baf633804eb68c0478e8e715dd3ed"
+  end
+
   # :build, safely this time. node/npm are only invoked inside `def
   # install` below. A previous attempt at this same scoping (reverted —
   # see git history) broke real installs: the npm-published launcher's
