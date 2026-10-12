@@ -6,7 +6,7 @@ require "json"
 class Rook < Formula
   desc "Agent assurance from the terminal"
   homepage "https://github.com/LambdaTest/rook"
-  url "https://registry.npmjs.org/@testmuai/rook/-/rook-0.1.7.tgz"
+  url "https://registry.npmjs.org/@testmuai/rook/-/rook-0.1.11.tgz"
   # KNOWN, DELIBERATE: brew style reports FormulaAudit/ComponentsOrder on the
   # version line below (it wants version before sha256). Do NOT reorder these
   # three lines, and do NOT run `brew style --fix` on them. The release
@@ -21,15 +21,9 @@ class Rook < Formula
   # allow cops to be disabled in casks and formulae"), so the directive is
   # itself an offense. The shipping lambdatest/homebrew-kane tap carries this
   # same offense on the same lines.
-  sha256 "e071c50be650fa3968c834fc74d30e1081b5b83d30ceb3844fda29189127bd13" # patched by update-formula.yml (Task 9)
+  sha256 "38870ec58242201a9229f098ca80f13791754e2f98d32c20186fae2cb922b09b" # patched by update-formula.yml (Task 9)
   license "Apache-2.0"
-  version "0.1.7"
-
-  bottle do
-    root_url "https://github.com/LambdaTest/homebrew-rook/releases/download/rook-0.1.7"
-    sha256 cellar: :any_skip_relocation, arm64_sequoia: "bfdf7bb128d6fc8d50fb36393c24238aee83cb33e615a7134f3115b57d8ab03e"
-    sha256 cellar: :any_skip_relocation, x86_64_linux:  "14d5748dd5a7954339507d1d823d942ca51baf633804eb68c0478e8e715dd3ed"
-  end
+  version "0.1.11"
 
   # :build, safely this time. node/npm are only invoked inside `def
   # install` below. A previous attempt at this same scoping (reverted —
