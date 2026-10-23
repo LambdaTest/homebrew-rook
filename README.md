@@ -30,7 +30,7 @@ Homebrew adds the tap automatically on a fresh installation.
 ## Upgrade and uninstall
 
 ```bash
-brew upgrade lambdatest/rook/rook       # rook update prints this command for Homebrew installs
+brew upgrade lambdatest/rook/rook       # or: rook update, which runs this for Homebrew installs (0.1.12+)
 brew uninstall lambdatest/rook/rook
 brew untap lambdatest/rook              # after uninstalling, to remove the tap as well
 ```
