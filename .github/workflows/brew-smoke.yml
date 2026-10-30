@@ -64,6 +64,11 @@ jobs:
       # No setup-homebrew here: GitHub's macOS runner images ship Homebrew
       # preinstalled. The Linux job below does need it.
       - run: brew tap lambdatest/rook
+      # Homebrew 7.0.11 (this image's) refuses to load a formula from a
+      # third-party tap until it is trusted. `brew install
+      # lambdatest/rook/rook` trusts the formula it names, as it does for
+      # users, but `brew deps` below runs before the install.
+      - run: brew trust --formula lambdatest/rook/rook
 
       # node must stay :build-only. def install now writes its own
       # #!/bin/sh launcher that execs the bundled node binary directly
@@ -152,6 +157,8 @@ jobs:
       # the same commit as build-bottles.yml; keep the two in step.
       - uses: Homebrew/actions/setup-homebrew@b35a29a0f83ee8b8ca07b219fc8db3d7bb88ab49 # 2026.08.10.2
       - run: brew tap lambdatest/rook
+      # See the trust step in macos-arm above.
+      - run: brew trust --formula lambdatest/rook/rook
 
       # See the identical step in macos-arm above.
       - name: Assert node is not a resolved runtime dependency of the bottle
