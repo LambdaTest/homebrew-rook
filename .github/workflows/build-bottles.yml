@@ -11,6 +11,7 @@ on:
 permissions:
   contents: write
   actions: write
+  pull-requests: write
 
 concurrency:
   group: build-bottles-${{ github.ref }}
@@ -206,6 +207,9 @@ jobs:
   publish:
     needs: [guard, build]
     runs-on: ubuntu-latest
+    # Most of this job is the wait for a maintainer to approve the bottle PR;
+    # scripts/merge-via-pr.sh gives up inside this 6-hour hosted-job limit.
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
         with:
@@ -308,14 +312,17 @@ jobs:
               f.write(src)
           PY
 
-      # The step above rewrites Ruby source and the step below pushes it to
+      # The step above rewrites Ruby source and the step below lands it on
       # the tap's main branch. Without this check in between, a bad insertion
       # breaks `brew install` for every user of the tap until a human notices.
       - name: Validate the patched formula is still valid Ruby
         run: ruby -c Formula/rook.rb
 
+      # main takes changes only through an approved PR (org ruleset, since
+      # 2 Nov 2026): a maintainer approves it and this step merges it.
       - name: Commit bottle block
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.guard.outputs.version }}
         run: |
           git config user.name "github-actions[bot]"
@@ -325,7 +332,8 @@ jobs:
             exit 0
           fi
           git commit -m "Add bottle block for rook ${VERSION}"
-          git push origin main
+          scripts/merge-via-pr.sh "chore/rook-${VERSION}-bottles" "Add bottle block for rook ${VERSION}" \
+            "then run brew-smoke with expected-version=${VERSION}"
 
       - name: Trigger brew smoke test
         env:

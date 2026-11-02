@@ -20,6 +20,7 @@ on:
 permissions:
   contents: write
   actions: write
+  pull-requests: write
 
 # One group across versions and trigger refs. Queued releases read the
 # formula left by the previous run, rather than an old event SHA.
@@ -30,6 +31,9 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    # Most of a run is the wait for a maintainer to approve the formula PR;
+    # scripts/merge-via-pr.sh gives up inside this 6-hour hosted-job limit.
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
         with:
@@ -194,9 +198,13 @@ jobs:
       - name: Validate the patched formula is still valid Ruby
         run: ruby -c Formula/rook.rb
 
+      # main takes changes only through an approved PR (org ruleset, since
+      # 2 Nov 2026), so the commit lands through one: a maintainer approves
+      # it and this step merges it, refusing if main moved in the meantime.
       - name: Commit and push
         id: commit
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           git config user.name "github-actions[bot]"
@@ -207,7 +215,8 @@ jobs:
             exit 0
           fi
           git commit -m "Update rook to ${VERSION}"
-          git push
+          scripts/merge-via-pr.sh "chore/rook-${VERSION}" "Update rook to ${VERSION}" \
+            "then run Build bottles with version=${VERSION}"
           echo "committed=true" >> "$GITHUB_OUTPUT"
 
       - name: Trigger Build bottles for the new version
