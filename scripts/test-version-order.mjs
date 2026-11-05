@@ -29,11 +29,11 @@ function fixture(version, name = "fixture-") {
   return dir;
 }
 
-function run(body, dir, version) {
+function run(body, dir, version, extra = {}) {
   return spawnSync("bash", ["-e", "-o", "pipefail", "-c", body], {
     cwd: dir, encoding: "utf8",
     env: {
-      ...process.env, PATH: `${bin}:${process.env.PATH}`, VERSION: version,
+      ...process.env, PATH: `${bin}:${process.env.PATH}`, VERSION: version, ...extra,
       TARBALL_URL: `https://registry.npmjs.org/@testmuai/rook/-/rook-${version}.tgz`,
       SHA256: "c".repeat(64), GITHUB_OUTPUT: join(dir, "outputs"),
     },
@@ -103,8 +103,17 @@ for (const kind of ["missing", "duplicate"]) {
   });
 }
 
+// The commit step lands through scripts/merge-via-pr.sh; fake-gh plays `gh pr`
+// against the bare remote and approves at once, so only the moved-main check
+// can stop the stale run.
 test("a competing push after checkout cannot be overwritten by the real commit step", () => {
   const remote = join(root, "remote.git");
+  symlinkSync(join(repo, "scripts/fixtures/fake-gh"), join(bin, "gh"));
+  const landing = name => {
+    const state = mkdtempSync(join(root, `gh-${name}-`));
+    writeFileSync(join(state, "remote"), remote);
+    return { FAKE_GH_STATE: state, WAIT_SECONDS: "2", POLL_SECONDS: "1" };
+  };
   git(root, "init", "--bare", "--initial-branch=main", remote);
   const seed = fixture("0.1.2", "seed-");
   git(seed, "init", "--initial-branch=main");
@@ -122,9 +131,9 @@ test("a competing push after checkout cannot be overwritten by the real commit s
   }
   assert.equal(run(update, older, "0.1.3").status, 0);
   assert.equal(run(update, newer, "0.1.4").status, 0);
-  const first = run(commit, newer, "0.1.4");
+  const first = run(commit, newer, "0.1.4", landing("newer"));
   assert.equal(first.status, 0, first.stderr);
-  const stale = run(commit, older, "0.1.3");
+  const stale = run(commit, older, "0.1.3", landing("older"));
   assert.notEqual(stale.status, 0, "stale checkout overwrote the newer push");
   assert.match(git(root, "--git-dir", remote, "show", "main:Formula/rook.rb"), /^  version "0\.1\.4"/m);
 });

@@ -7,13 +7,19 @@ This repository only carries `Formula/rook.rb`, the workflows that keep it curre
 ## How a release reaches this tap
 
 1. The private release pipeline publishes `@testmuai/rook` to npm, creates the `vX.Y.Z` release on `LambdaTest/rook` for the shell installer, and then sends a `formula-update` repository_dispatch here with the version.
-2. `update-formula.yml` waits for the npm packages, rewrites `url`, `sha256` and `version` in `Formula/rook.rb`, strips the previous bottle block, pushes to `main`, and dispatches **Build bottles**.
-3. `build-bottles.yml` builds the bottles, publishes them as the `rook-X.Y.Z` release of this repository, writes the bottle block back, pushes to `main`, and dispatches **brew-smoke**.
+2. `update-formula.yml` waits for the npm packages, rewrites `url`, `sha256` and `version` in `Formula/rook.rb`, strips the previous bottle block, lands that on `main` through a PR, and dispatches **Build bottles**.
+3. `build-bottles.yml` builds the bottles, publishes them as the `rook-X.Y.Z` release of this repository, writes the bottle block back through a second PR, and dispatches **brew-smoke**.
 4. `brew-smoke.yml` taps, installs, asserts a bottle was poured rather than built, checks the version, and runs `brew test`. `brew-smoke-intel.yml` is the manual Intel macOS source-build check.
 
 Between steps 2 and 3 the formula has no bottle block, so an install in that window builds from source instead of failing.
 
-Formula updates run one at a time and read the current `main` branch when they start. Before changing the formula, the updater refuses any pre-release version, then compares semantic versions and refuses an older release. Same-version retries are allowed. This workflow does not perform rollbacks. A competing push causes the normal Git push to fail; the updater never force-pushes over another change.
+### Approving the release PRs
+
+Since 2 Nov 2026 the org's ruleset lets `main` change only through a PR with one approval, and nothing bypasses it. So each release opens two PRs from `chore/rook-X.Y.Z-run-…` branches: the formula update, then the bottle block. The run prints the link and waits. Any tap admin approves it, and the run merges it and carries on. The bot is the last pusher, so the approver can be whoever cut the release.
+
+`scripts/merge-via-pr.sh` does this for both workflows. A run that waits 5½ hours without an approval gives up and leaves its PR open. Merge it, then start the next step by hand (**Build bottles** after the formula, **brew-smoke** after the bottles). A re-run closes the earlier run's open PR. If `main` moves while a PR waits, the run closes the PR instead of landing it over the newer `main`.
+
+Formula updates run one at a time and read the current `main` branch when they start. Before changing the formula, the updater refuses any pre-release version, then compares semantic versions and refuses an older release. Same-version retries are allowed. This workflow does not perform rollbacks. If `main` moves while the updater's PR waits, the PR is closed rather than merged; the updater never lands over another change.
 
 Every workflow can also be dispatched by hand, for a re-run or a version the private pipeline never dispatched:
 
