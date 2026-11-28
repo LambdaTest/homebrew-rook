@@ -43,6 +43,7 @@ macOS needs GNU sed (`brew install gnu-sed`) for `test-formula-patch.sh`, so the
 
 ## Formula internals
 
-- Homebrew's `node` is a build-time dependency only. `def install` writes a `#!/bin/sh` launcher that execs the bundled Node binary directly.
+- Homebrew's `node` is a build-time dependency only. `def install` writes a `#!/bin/sh` launcher that execs the installed binary directly.
+- The formula accepts two release shapes (AA-770). When `@testmuai/rook`'s `optionalDependencies` name `@testmuai/rook-<tag>`, it installs that package, nested in the main package, and the launcher execs its `bin/rook` executable with `ROOK_MAIN_PACKAGE` set to the main package. When they name `@testmuai/rook-node-<tag>`, it installs the bundled Node and the launcher runs `dist/cli.js` on it. `update-formula.yml` and the bottle check in `build-bottles.yml` follow the same choice, so a rolled-back release still installs.
 - Both npm install calls explicitly disable package lifecycle scripts. The published CLI already contains its build output, so no install-time package script is required. This policy also covers older Homebrew versions whose default npm arguments do not disable scripts.
 - On older macOS versions Homebrew may compile the `node` build dependency itself.

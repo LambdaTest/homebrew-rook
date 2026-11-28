@@ -144,16 +144,27 @@ jobs:
           wait_for_pkg "@testmuai/rook" "$VERSION" || exit 1
 
           PKG_META=$(curl -fsSL --max-time 10 "https://registry.npmjs.org/@testmuai/rook/${VERSION}")
+          # Two release shapes (AA-770), the same choice Formula/rook.rb makes.
+          # An executable release names @testmuai/rook-<tag> at the CLI's own
+          # version; an older release names @testmuai/rook-node-<tag> at the
+          # Node version it bundles.
+          RUNTIME_PREFIX="@testmuai/rook"
           RUNTIME_VERSION=$(printf '%s' "$PKG_META" \
-            | jq -r '.optionalDependencies["@testmuai/rook-node-darwin-arm64"] // empty')
+            | jq -r '.optionalDependencies["@testmuai/rook-darwin-arm64"] // empty')
+          if [ -z "$RUNTIME_VERSION" ]; then
+            RUNTIME_PREFIX="@testmuai/rook-node"
+            RUNTIME_VERSION=$(printf '%s' "$PKG_META" \
+              | jq -r '.optionalDependencies["@testmuai/rook-node-darwin-arm64"] // empty')
+          fi
           if ! [[ "$RUNTIME_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::could not resolve a valid runtime version from @testmuai/rook@${VERSION}'s optionalDependencies (got '${RUNTIME_VERSION}')"
             exit 1
           fi
           echo "Resolved runtime version: ${RUNTIME_VERSION}"
+          echo "Runtime packages: ${RUNTIME_PREFIX}-<tag>"
 
-          wait_for_pkg "@testmuai/rook-node-darwin-arm64" "$RUNTIME_VERSION" || exit 1
-          wait_for_pkg "@testmuai/rook-node-linux-x64" "$RUNTIME_VERSION" || exit 1
+          wait_for_pkg "${RUNTIME_PREFIX}-darwin-arm64" "$RUNTIME_VERSION" || exit 1
+          wait_for_pkg "${RUNTIME_PREFIX}-linux-x64" "$RUNTIME_VERSION" || exit 1
 
       - name: Compute tarball sha256
         id: tarball

@@ -173,25 +173,28 @@ jobs:
             fi
 
             case "$bottle" in
-              *.x86_64_linux.bottle.*) NODE_PKG="@testmuai/rook-node-linux-x64" ;;
-              *.arm64_*.bottle.*)      NODE_PKG="@testmuai/rook-node-darwin-arm64" ;;
-              *.x86_64_*.bottle.*)     NODE_PKG="@testmuai/rook-node-darwin-x64" ;;
+              *.x86_64_linux.bottle.*) TAG="linux-x64" ;;
+              *.arm64_*.bottle.*)      TAG="darwin-arm64" ;;
+              *.x86_64_*.bottle.*)     TAG="darwin-x64" ;;
               *) echo "::error::$bottle: unrecognized bottle label"; exit 1 ;;
             esac
-            RUNNER_SUFFIX="node_modules/${NODE_PKG}/bin/node"
+            # Two release shapes (AA-770): the rook executable, or an older
+            # release's bundled Node runtime. Either one must be in the bottle.
+            EXE_SUFFIX="node_modules/@testmuai/rook-${TAG}/bin/rook"
+            NODE_SUFFIX="node_modules/@testmuai/rook-node-${TAG}/bin/node"
 
             TMP=$(mktemp -d)
             tar -xzf "$bottle" -C "$TMP"
-            RUNNER=$(find "$TMP" -path "*/${RUNNER_SUFFIX}" -type f | head -1)
+            RUNNER=$(find "$TMP" \( -path "*/${EXE_SUFFIX}" -o -path "*/${NODE_SUFFIX}" \) -type f | head -1)
             if [ -z "$RUNNER" ]; then
-              echo "::error::$bottle is missing ${RUNNER_SUFFIX}"; rm -rf "$TMP"; exit 1
+              echo "::error::$bottle has neither ${EXE_SUFFIX} nor ${NODE_SUFFIX}"; rm -rf "$TMP"; exit 1
             fi
             BYTES=$(wc -c < "$RUNNER" | tr -d ' ')
             if [ "${BYTES:-0}" -lt 1000000 ]; then
-              echo "::error::$bottle: bundled node present but only ${BYTES} bytes"; rm -rf "$TMP"; exit 1
+              echo "::error::$bottle: ${RUNNER#"$TMP"/} present but only ${BYTES} bytes"; rm -rf "$TMP"; exit 1
             fi
             if [ ! -x "$RUNNER" ]; then
-              echo "::error::$bottle: bundled node not executable"; rm -rf "$TMP"; exit 1
+              echo "::error::$bottle: ${RUNNER#"$TMP"/} not executable"; rm -rf "$TMP"; exit 1
             fi
             rm -rf "$TMP"
           done
