@@ -57,25 +57,34 @@ class Rook < Formula
     # package lifecycle scripts. The published CLI is already built.
     system "npm", "install", "--ignore-scripts", *std_npm_args.reject { |arg| arg == "--build-from-source" }
 
-    node_pkg =
+    tag =
       if OS.mac?
-        Hardware::CPU.arm? ? "@testmuai/rook-node-darwin-arm64" : "@testmuai/rook-node-darwin-x64"
+        Hardware::CPU.arm? ? "darwin-arm64" : "darwin-x64"
       elsif OS.linux? && Hardware::CPU.intel?
-        "@testmuai/rook-node-linux-x64"
+        "linux-x64"
       elsif OS.linux? && Hardware::CPU.arm?
-        "@testmuai/rook-node-linux-arm64"
+        "linux-arm64"
       end
-    odie "rook does not ship a bundled Node runtime for this platform." if node_pkg.nil?
+    odie "rook does not ship a build for this platform." if tag.nil?
 
+    # Two release shapes (AA-770). A release that ships rook as one executable
+    # per platform names @testmuai/rook-<tag> at the CLI's own version. An
+    # older release names its bundled Node runtime, @testmuai/rook-node-<tag>,
+    # and runs dist/cli.js on it. Accepting both lets this formula land before
+    # the first executable release, and keeps a rolled-back release installable.
     pkg_dir = libexec/"lib/node_modules/@testmuai/rook"
-    node_pkg_version = JSON.parse((pkg_dir/"package.json").read)
-                           .dig("optionalDependencies", node_pkg)
-    if node_pkg_version.nil?
-      odie "#{node_pkg} is not in the meta's optionalDependencies — " \
-           "this formula requires a node-bundled rook release."
+    optional = JSON.parse((pkg_dir/"package.json").read).fetch("optionalDependencies", {})
+    executable = optional.key?("@testmuai/rook-#{tag}")
+    runtime_pkg = executable ? "@testmuai/rook-#{tag}" : "@testmuai/rook-node-#{tag}"
+    runtime_version = optional[runtime_pkg]
+    if runtime_version.nil?
+      odie "neither @testmuai/rook-#{tag} nor @testmuai/rook-node-#{tag} is in the meta's optionalDependencies."
     end
 
-    binary = pkg_dir/"node_modules/#{node_pkg}/bin/node"
+    # Nested inside the main package, where npm puts a global package's
+    # optional dependency: `rook update`'s provenance and its brew
+    # confirmation read the main package at pkg_dir, in both shapes.
+    binary = pkg_dir/"node_modules/#{runtime_pkg}/bin/#{executable ? "rook" : "node"}"
     complete = -> { binary.exist? && binary.size > 1_000_000 }
 
     cd pkg_dir do
@@ -85,7 +94,7 @@ class Rook < Formula
                      "--ignore-scripts", "--audit=false", "--fund=false",
                      "--loglevel=error", "--prefer-online",
                      "--cache=#{HOMEBREW_CACHE}/npm_cache",
-                     "#{node_pkg}@#{node_pkg_version}"
+                     "#{runtime_pkg}@#{runtime_version}"
         break if complete.call
       end
     end
@@ -96,41 +105,49 @@ class Rook < Formula
       # Replace npm's installed launcher (a symlink to the published
       # package's bin/rook.cjs — a JS trampoline whose `#!/usr/bin/env
       # node` shebang needs *some* node just to bootstrap, before it
-      # re-execs into this same bundled binary anyway) with a plain shell
-      # script that execs the bundled binary directly. `exec` replaces
-      # the shell's own process image, so signals land on the bundled
-      # node process natively — no manual SIGINT/SIGTERM/SIGHUP relay
-      # needed, unlike the JS trampoline's spawn()-based approach, which
-      # forwards signals to a genuine child process specifically because
-      # it doesn't have this option.
+      # re-execs into this same binary anyway) with a plain shell script
+      # that execs the binary directly. `exec` replaces the shell's own
+      # process image, so signals land on that process natively — no manual
+      # SIGINT/SIGTERM/SIGHUP relay needed, unlike the JS trampoline's
+      # spawn()-based approach, which forwards signals to a genuine child
+      # process specifically because it doesn't have this option.
       #
       # Absolute paths baked into an installed script are ordinary,
       # relocatable Homebrew practice (any formula that writes a wrapper
       # referencing `#{libexec}` does the same) — not something specific
       # to this fix.
-      #
-      # Deliberately only in this success branch: the opoo fallback below
-      # bottles a tree with no working bundled binary, where npm's
-      # original trampoline — which falls back to whatever system Node
-      # is present — is exactly the right behavior, not this.
-      entry = pkg_dir/"dist/cli.js"
       launcher = libexec/"bin/rook"
       launcher.unlink if launcher.exist? || launcher.symlink?
-      launcher.write <<~SH
-        #!/bin/sh
-        exec "#{binary}" "#{entry}" "$@"
-      SH
+      if executable
+        # The executable finds the main package through ROOK_MAIN_PACKAGE and
+        # checks that it is rook at the executable's own version before
+        # serving anything from it.
+        launcher.write <<~SH
+          #!/bin/sh
+          ROOK_MAIN_PACKAGE="#{pkg_dir}"
+          export ROOK_MAIN_PACKAGE
+          exec "#{binary}" "$@"
+        SH
+      else
+        entry = pkg_dir/"dist/cli.js"
+        launcher.write <<~SH
+          #!/bin/sh
+          exec "#{binary}" "#{entry}" "$@"
+        SH
+      end
       chmod 0755, launcher
     else
-      msg = "#{node_pkg}@#{node_pkg_version} did not install a usable bundled Node runtime"
+      msg = "#{runtime_pkg}@#{runtime_version} did not install a usable binary"
       # ENV.build_bottle? is Homebrew's real API for this (there is no
       # HOMEBREW_BUILD_BOTTLE environment variable — zero hits in the
       # Homebrew source). ENV["CI"] still covers CI, which Homebrew does
       # not clear; build_bottle? is what makes a maintainer's local
       # `brew install --build-bottle` hard-fail here too, rather than
       # silently degrading to the opoo path and bottling a node-less tree.
-      if ENV["CI"] || ENV.build_bottle?
-        odie msg
+      # An executable release has no JavaScript CLI to fall back to, so a
+      # missing executable always fails the install.
+      if ENV["CI"] || ENV.build_bottle? || executable
+        odie "#{msg}. Re-run `brew reinstall rook`."
       else
         opoo "#{msg}. rook is installed but will fall back to system Node — " \
              "re-run `brew reinstall rook` later."
@@ -175,21 +192,27 @@ class Rook < Formula
 
   test do
     assert_match version.to_s, shell_output("#{bin}/rook --version")
-    node_pkg =
+    tag =
       if OS.mac?
-        Hardware::CPU.arm? ? "@testmuai/rook-node-darwin-arm64" : "@testmuai/rook-node-darwin-x64"
+        Hardware::CPU.arm? ? "darwin-arm64" : "darwin-x64"
       elsif OS.linux? && Hardware::CPU.intel?
-        "@testmuai/rook-node-linux-x64"
+        "linux-x64"
       elsif OS.linux? && Hardware::CPU.arm?
-        "@testmuai/rook-node-linux-arm64"
+        "linux-arm64"
       end
-    node_root = libexec/"lib/node_modules/@testmuai/rook/node_modules/#{node_pkg}"
-    binary = node_root/"bin/node"
-    assert_path_exists binary, "bundled node binary missing"
-    assert_predicate binary, :executable?, "bundled node binary not executable — install-time chmod missed"
-    pin = JSON.parse((node_root/"package.json").read)["nodeRuntimeVersion"]
-    refute_nil pin, "node package carries no nodeRuntimeVersion stamp"
-    assert_equal "v#{pin}", shell_output("#{binary} --version").strip
+    pkg_dir = libexec/"lib/node_modules/@testmuai/rook"
+    optional = JSON.parse((pkg_dir/"package.json").read).fetch("optionalDependencies", {})
+    # An executable release (AA-770) is proven by `rook --version` above. The
+    # bundled-Node shape also pins the runtime's own version.
+    unless optional.key?("@testmuai/rook-#{tag}")
+      node_root = pkg_dir/"node_modules/@testmuai/rook-node-#{tag}"
+      binary = node_root/"bin/node"
+      assert_path_exists binary, "bundled node binary missing"
+      assert_predicate binary, :executable?, "bundled node binary not executable — install-time chmod missed"
+      pin = JSON.parse((node_root/"package.json").read)["nodeRuntimeVersion"]
+      refute_nil pin, "node package carries no nodeRuntimeVersion stamp"
+      assert_equal "v#{pin}", shell_output("#{binary} --version").strip
+    end
 
     # Structural guard on the actual mechanism, not just its outcome: the
     # `rook --version` call above already proves the launcher works, but
@@ -208,7 +231,6 @@ class Rook < Formula
     # fails here, instead of only silently breaking the reader's own
     # independently hard-coded path walk (the same failure class round 8's
     # #42 already catalogued for a sibling bug in that reader).
-    pkg_dir = libexec/"lib/node_modules/@testmuai/rook"
     assert_equal prefix, pkg_dir.dirname.dirname.dirname.dirname.dirname,
                  "the marker's \"five levels above pkg_dir\" layout assumption broke"
 

@@ -241,6 +241,65 @@ else
 $OUT"
 fi
 
+# =============================================================================
+# (g) Executable release (AA-770): optionalDependencies name
+# @testmuai/rook-<tag> at the CLI's own version, and those are what the
+# step must wait for.
+# =============================================================================
+cat >"$STATUS_MAP" <<'MAP'
+@testmuai/rook|0.1.23|200
+@testmuai/rook-darwin-arm64|0.1.23|200
+@testmuai/rook-linux-x64|0.1.23|200
+MAP
+cat >"$META_BODY" <<'JSON'
+{"name":"@testmuai/rook","version":"0.1.23","optionalDependencies":{"@testmuai/rook-darwin-arm64":"0.1.23","@testmuai/rook-darwin-x64":"0.1.23","@testmuai/rook-linux-x64":"0.1.23","@testmuai/rook-linux-arm64":"0.1.23","@testmuai/rook-win-x64":"0.1.23"}}
+JSON
+OUT="$(run_step "0.1.23")"
+RC=$?
+if [ "$RC" = "0" ] && echo "$OUT" | grep -q "Resolved runtime version: 0.1.23" \
+   && echo "$OUT" | grep -q "Runtime packages: @testmuai/rook-<tag>"; then
+  pass "(g) an executable release resolves @testmuai/rook-<tag> at the CLI version"
+else
+  fail "(g) executable release not resolved — exit=$RC, output:
+$OUT"
+fi
+
+# =============================================================================
+# (h) Executable release whose platform package never becomes visible —
+# must fail closed naming the executable package, not a rook-node one.
+# =============================================================================
+cat >"$STATUS_MAP" <<'MAP'
+@testmuai/rook|0.1.23|200
+MAP
+OUT="$(run_step "0.1.23" RETRY_COUNT=2 RETRY_SLEEP=0)"
+RC=$?
+if [ "$RC" != "0" ] && echo "$OUT" | grep -q "@testmuai/rook-darwin-arm64@0.1.23 not visible"; then
+  pass "(h) a missing executable package fails closed with the right message"
+else
+  fail "(h) missing executable package did not fail as expected — exit=$RC, output:
+$OUT"
+fi
+
+# =============================================================================
+# (i) Both shapes named: the executable wins, as it does in Formula/rook.rb.
+# =============================================================================
+cat >"$STATUS_MAP" <<'MAP'
+@testmuai/rook|0.1.23|200
+@testmuai/rook-darwin-arm64|0.1.23|200
+@testmuai/rook-linux-x64|0.1.23|200
+MAP
+cat >"$META_BODY" <<'JSON'
+{"name":"@testmuai/rook","version":"0.1.23","optionalDependencies":{"@testmuai/rook-darwin-arm64":"0.1.23","@testmuai/rook-node-darwin-arm64":"24.22.1"}}
+JSON
+OUT="$(run_step "0.1.23")"
+RC=$?
+if [ "$RC" = "0" ] && echo "$OUT" | grep -q "Runtime packages: @testmuai/rook-<tag>"; then
+  pass "(i) with both shapes named, the executable package is chosen"
+else
+  fail "(i) both-shapes case did not choose the executable — exit=$RC, output:
+$OUT"
+fi
+
 echo ""
 if [ "$FAIL" = "0" ]; then
   echo "=== runtime-version-poll transform test: PASSED ==="
